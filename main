@@ -1,0 +1,226 @@
+import pygame
+from pygame.locals import *
+from sys import exit
+from random import randint
+
+class Tela:
+    def __init__(self, largura, altura, nome, cor, cor_lua) -> None:
+        self.largura = largura
+        self.altura = altura
+        self.nome = nome
+        self.cor = cor
+        self.cor_lua = cor_lua
+        self.cor_2 = (255, 255, 255)
+        self.caracteristicas_da_tela = pygame.display.set_mode((self.largura, self.altura))
+        self.relogio = pygame.time.Clock()
+        self.index = 0
+        self.lista_x = []
+        self.lista_y = []
+        self.contador = 0
+
+    def eventos(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                exit()
+
+    def preenche_tela(self):
+        pygame.display.set_caption(self.nome)
+        if self.contador >= 1800:
+            self.caracteristicas_da_tela.fill(self.cor)
+            self.cor_lua = (128, 128, 128)
+        else:
+            self.caracteristicas_da_tela.fill(self.cor_2)
+        self.contador += 1
+    
+    def cria_posicoes(self):
+        if self.index == 0:
+            for i in range(15):
+                self.lista_x.append(randint(10, 640))
+                self.lista_y.append(randint(0, 300))
+            self.index += 1
+
+    def desenha_lua(self):
+        if self.contador >= 1800:
+            pygame.draw.circle(self.caracteristicas_da_tela, self.cor_lua, (120, 100), 50)
+            for i in range(15):
+                pygame.draw.circle(self.caracteristicas_da_tela, self.cor_lua, (self.lista_x[i], self.lista_y[i]), 5)  
+
+
+class Personagem(Tela):
+    def __init__(self, tela, tam_personagem, cor_personagem, posicao_x, posicao_y) -> None:
+        self.tela = tela
+        self.tam_personagem = tam_personagem
+        self.cor_personagem = cor_personagem
+        self.posicao_x = posicao_x
+        self.posicao_y = posicao_y
+        self.pode_mover = True
+        self.pode_pular = True
+        self.trava_movimentos = False
+
+    def desenha_personagem(self):
+        pygame.draw.rect(self.tela.caracteristicas_da_tela, self.cor_personagem, (self.posicao_x, self.posicao_y, self.tam_personagem, self.tam_personagem))
+
+    def move_personagem(self):
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == KEYDOWN:
+                self.tecla = event.key
+            
+        if self.posicao_y < 440:
+            self.posicao_y += 2.5
+        
+        if self.trava_movimentos == False:
+            if not (keys[K_SPACE] or keys[K_w] or keys[K_UP]):
+                self.pode_mover = True
+                self.pode_pular = True
+        
+            if (keys[K_d] or keys[K_RIGHT]) and self.posicao_x < 600:
+                self.posicao_x += 5 
+
+            if (keys[K_a] or keys[K_LEFT]) and self.posicao_x > 0:
+                self.posicao_x -= 5
+            
+            if (keys[K_SPACE] or keys[K_w] or keys[K_UP]) and self.pode_mover and self.pode_pular and self.posicao_y >= 440:
+                self.pode_mover = False
+                self.posicao_y -= 100
+                self.pode_pular = False
+
+
+
+class Obstaculos(Tela):
+    def __init__(self, tela, cor, vida) -> None:
+        self.tela = tela
+        self.cor = cor
+        self.vida = vida
+        self.lista_obstaculos_direita = []
+        self.lista_obstaculos_esquerda = []
+        self.obstaculos_colididos = set()
+        self.pode_colidir = True
+        self.vida = 1
+        self.chance_maxima = 300
+
+    def cria_obstaculo(self):
+        chance_criar = randint(0, self.chance_maxima)
+        tamanho = 30
+
+        if chance_criar == self.chance_1:
+            posicao_y_criar = 450
+            posicao_x_criar = -40
+            novo_obstaculo = pygame.Rect(posicao_x_criar, posicao_y_criar, tamanho, tamanho)
+            self.lista_obstaculos_esquerda.append(novo_obstaculo)
+        
+        elif chance_criar == self.chance_2:
+            posicao_y_criar = 320
+            posicao_x_criar = 680
+            novo_obstaculo = pygame.Rect(posicao_x_criar, posicao_y_criar, tamanho, tamanho)
+            self.lista_obstaculos_direita.append(novo_obstaculo)
+        
+        elif chance_criar == self.chance_3:
+            posicao_y_criar = 340
+            posicao_x_criar = -40
+            novo_obstaculo = pygame.Rect(posicao_x_criar, posicao_y_criar, tamanho, tamanho)
+            self.lista_obstaculos_esquerda.append(novo_obstaculo)
+
+        elif chance_criar == self.chance_4:
+            posicao_y_criar = 450
+            posicao_x_criar = 680
+            novo_obstaculo = pygame.Rect(posicao_x_criar, posicao_y_criar, tamanho, tamanho)
+            self.lista_obstaculos_direita.append(novo_obstaculo)
+
+    def chances_criar(self):
+        self.percent_chance = self.chance_maxima // 3
+
+        self.chance_1 = 0
+        self.chance_2 = self.percent_chance
+        self.chance_3 = self.percent_chance * 2
+        self.chance_4 = self.chance_maxima
+
+        if self.tela.contador == 1800:
+            self.chance_maxima -= 50
+        
+        if self.tela.contador == 3600:
+            self.chance_maxima -= 50
+
+    def move_obstaculos(self):
+        for obstaculo in self.lista_obstaculos_direita:
+            obstaculo.x -= 5
+        
+        for obstaculo in self.lista_obstaculos_esquerda:
+            obstaculo.x += 5
+
+    def desenha_obstaculos(self):
+        for obstaculo in self.lista_obstaculos_direita:
+            pygame.draw.rect(self.tela.caracteristicas_da_tela, self.cor, obstaculo)
+
+        for obstaculo in self.lista_obstaculos_esquerda:
+            pygame.draw.rect(self.tela.caracteristicas_da_tela, self.cor, obstaculo)
+
+    def cria_colisao(self, personagem_rect):
+        for obstaculo in self.lista_obstaculos_direita:
+            colidiu = obstaculo.colliderect(personagem_rect)
+            if colidiu:
+                self.vida -= 1
+               
+        for obstaculo in self.lista_obstaculos_esquerda:
+            colidiu = obstaculo.colliderect(personagem_rect)
+            if colidiu:
+                self.vida -= 1
+
+
+class Frase(Tela):
+    def __init__(self, obstaculos, tela, personagem) -> None:
+        self.obstaculos = obstaculos
+        self.tela = tela
+        self.personagem = personagem
+        self.fonte = pygame.font.SysFont('arial', 30, True, True)
+        self.fonte_2 = pygame.font.SysFont('arial', 40, True, True)
+        self.texto_vida = f'VIDA: {self.obstaculos.vida}'
+        self.cor_frase = (64, 64, 64)
+        self.frase_formada = self.fonte_2.render(self.texto_vida, True, self.cor_frase)
+        self.perdeu_jogo = 0
+    
+    def escreve_frase(self):
+        if self.tela.contador == 1800:
+            self.cor_frase = (128, 128, 128)
+            self.frase_formada = self.fonte.render(self.texto_vida, True, self.cor_frase)
+
+        self.tela.caracteristicas_da_tela.blit(self.frase_formada, (450, 40))
+
+        if self.obstaculos.vida <= 0:
+            self.texto_vida = f'VIDA: 0'
+            self.frase_formada = self.fonte.render(self.texto_vida, True, self.cor_frase)
+            self.obstaculos.vida = 0
+            self.personagem.trava_movimentos = True
+
+
+def global_var():
+    pygame.init()
+    tela = Tela(640, 480, "TENTE NAO SER PEGO", (0,0,0), (64, 64, 64))
+    personagem = Personagem(tela, 40, (255, 0, 0), 300, 440)
+    obstaculos = Obstaculos(tela, (64, 64, 64), 3)
+    frase = Frase(obstaculos, tela, personagem)
+
+    return tela, personagem, obstaculos, frase
+
+def main():
+    tela, personagem, obstaculos, frase =  global_var()
+
+    while True:
+        tela.eventos()
+        tela.preenche_tela()
+        tela.cria_posicoes()  
+        tela.desenha_lua()
+        personagem.desenha_personagem()
+        personagem.move_personagem()
+        obstaculos.chances_criar()
+        obstaculos.cria_obstaculo()
+        obstaculos.desenha_obstaculos()
+        obstaculos.move_obstaculos()
+        obstaculos.cria_colisao(personagem_rect=pygame.Rect(personagem.posicao_x, personagem.posicao_y, personagem.tam_personagem, personagem.tam_personagem))
+        frase.escreve_frase()
+        tela.relogio.tick(60)
+        pygame.display.update()
+
+if __name__ == "__main__":
+    main()
